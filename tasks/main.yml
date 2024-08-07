@@ -24,10 +24,6 @@
     mode: '0644'
   delegate_to: localhost
 
-- name: Add SSH key to agent
-  ansible.builtin.command: ssh-add /home/ansible/.ssh/id_rsa
-  delegate_to: localhost
-
 - name: Set InSpec attributes
   when: inspec_vars_list is defined
   block:
