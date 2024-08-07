@@ -56,6 +56,9 @@
   changed_when: false
   register: inspec_out
   ignore_errors: yes
+  environment:
+    CHEF_LICENSE: "{{ chef_license }}"
+    CHEF_LICENSE_KEY: "{{ chef_license_key }}"
 
 - name: Display InSpec results
   ansible.builtin.debug:

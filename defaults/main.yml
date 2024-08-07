@@ -1,2 +1,4 @@
 ---
 # defaults file for inspec_role
+chef_license: "accept"
+chef_license_key: "123456789"
