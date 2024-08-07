@@ -24,6 +24,12 @@
     mode: '0644'
   delegate_to: localhost
 
+- name: Add SSH key to agent
+  ansible.builtin.shell: |
+    eval "$(ssh-agent -s)"
+    ssh-add /home/ansible/.ssh/id_rsa
+  delegate_to: localhost
+
 - name: Set InSpec attributes
   when: inspec_vars_list is defined
   block:
@@ -47,10 +53,12 @@
   when: inspec_profile_dir is undefined
 
 - name: Run InSpec tests
-  ansible.builtin.command: >
-    inspec exec {{ inspec_profile_dir }}
-    -t ssh://{{ ansible_user }}@{{ inventory_hostname }}
-    --private-key /home/ansible/.ssh/id_rsa
+  ansible.builtin.shell: |
+    eval "$(ssh-agent -s)"
+    ssh-add /home/ansible/.ssh/id_rsa
+    inspec exec {{ inspec_profile_dir }} \
+    -t ssh://{{ ansible_user }}@{{ inventory_hostname }} \
+    --private-key /home/ansible/.ssh/id_rsa \
     {{ inspec_attr_arg }}
   delegate_to: localhost
   changed_when: false
