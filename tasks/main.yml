@@ -9,7 +9,7 @@
     dest: /root/.ssh/id_rsa
     mode: '0600'
   delegate_to: localhost
-  no_log: true
+    #  no_log: true
 
 - name: Write SSH public key to file
   ansible.builtin.copy:
@@ -17,12 +17,12 @@
     dest: /root/.ssh/id_rsa.pub
     mode: '0644'
   delegate_to: localhost
-  no_log: true
+    #  no_log: true
 
 - name: Add SSH key to agent
   ansible.builtin.command: ssh-add /root/.ssh/id_rsa
   delegate_to: localhost
-  no_log: true
+    #  no_log: true
 
 - name: Set InSpec attributes
   when: inspec_vars_list is defined
