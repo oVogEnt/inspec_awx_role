@@ -45,7 +45,7 @@
       delegate_to: localhost
 
 - ansible.builtin.set_fact:
-    inspec_attr_arg: "{{ '--attrs %s'|format(inspec_attr_path) if inspec_vars_list is defined else '' }}"
+    inspec_attr_arg: "{{ '--input-file %s'|format(inspec_attr_path) if inspec_vars_list is defined else '' }}"
 
 - name: Set InSpec profiles path
   ansible.builtin.set_fact:
@@ -58,7 +58,7 @@
     ssh-add /home/ansible/.ssh/id_rsa
     inspec exec {{ inspec_profile_dir }} \
     -t ssh://{{ ansible_user }}@{{ ansible_host }} \
-    --private-key /home/ansible/.ssh/id_rsa \
+    --key-files /home/ansible/.ssh/id_rsa \
     {{ inspec_attr_arg }}
   delegate_to: localhost
   changed_when: false
