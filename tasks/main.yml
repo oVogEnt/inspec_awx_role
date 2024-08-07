@@ -57,7 +57,7 @@
     eval "$(ssh-agent -s)"
     ssh-add /home/ansible/.ssh/id_rsa
     inspec exec {{ inspec_profile_dir }} \
-    -t ssh://{{ ansible_user }}@{{ inventory_hostname }} \
+    -t ssh://{{ ansible_user }}@{{ ansible_host }} \
     --private-key /home/ansible/.ssh/id_rsa \
     {{ inspec_attr_arg }}
   delegate_to: localhost
