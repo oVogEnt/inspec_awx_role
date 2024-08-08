@@ -79,19 +79,29 @@
     content: "{{ inspec_output_content.stdout }}"
     dest: /tmp/inspec_output_{{ inventory_hostname }}.txt
 
-- name: Display InSpec output summary
+- name: Copy InSpec output parsing script
+  ansible.builtin.copy:
+    src: files/parse_inspec_output.py
+    dest: /tmp/parse_inspec_output.py
+    mode: '0755'
+
+- name: Run InSpec output parsing script
+  ansible.builtin.command:
+    cmd: python3 /tmp/parse_inspec_output.py /tmp/inspec_output_{{ inventory_hostname }}.txt
+  register: parse_result
+  changed_when: false
+
+- name: Display InSpec summary report
   ansible.builtin.debug:
-    msg: "InSpec run completed. Results stored in /tmp/inspec_output_{{ inventory_hostname }}.txt"
-  when: inspec_out.rc == 0 or inspec_out.rc == 101
+    msg: "{{ parse_result.stdout }}"
+
+- name: Copy InSpec summary to target host
+  ansible.builtin.copy:
+    content: "{{ parse_result.stdout }}"
+    dest: /tmp/inspec_summary_{{ inventory_hostname }}.txt
 
 - name: Cleanup temporary InSpec files on local
   ansible.builtin.file:
     path: /tmp/inspec_output.txt
     state: absent
   delegate_to: localhost
-
-- name: Display InSpec results content
-  ansible.builtin.debug:
-    msg: "{{ inspec_output_content.stdout }}"
-  when: inspec_output_content is defined
-
