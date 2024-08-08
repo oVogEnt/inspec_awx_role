@@ -65,8 +65,7 @@
     inspec exec {{ inspec_profile_dir }} \
     -t ssh://{{ ansible_user }}@{{ ansible_host }} \
     --key-files /home/ansible/.ssh/id_rsa \
-    {{ inspec_attr_arg }} \
-    --reporter json:/tmp/inspec-results/inspec_results.json
+    {{ inspec_attr_arg }} > /tmp/inspec_output.txt 2>&1
   delegate_to: localhost
   changed_when: false
   register: inspec_out
