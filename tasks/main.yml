@@ -1,0 +1,81 @@
+---
+- name: Set current role path
+  ansible.builtin.set_fact:
+    current_role_path: '{{ role_path }}'
+
+- name: Ensure SSH directory exists
+  ansible.builtin.file:
+    path: /home/ansible/.ssh
+    state: directory
+    mode: '0700'
+  delegate_to: localhost
+
+- name: Write SSH private key to file
+  ansible.builtin.copy:
+    content: "{{ ssh_private_key }}"
+    dest: /home/ansible/.ssh/id_rsa
+    mode: '0600'
+  delegate_to: localhost
+
+- name: Write SSH public key to file
+  ansible.builtin.copy:
+    content: "{{ ssh_public_key }}"
+    dest: /home/ansible/.ssh/id_rsa.pub
+    mode: '0644'
+  delegate_to: localhost
+
+- name: Add SSH key to agent
+  ansible.builtin.shell: |
+    eval "$(ssh-agent -s)"
+    ssh-add /home/ansible/.ssh/id_rsa
+  delegate_to: localhost
+
+- name: Set InSpec attributes
+  when: inspec_vars_list is defined
+  block:
+    - ansible.builtin.set_fact:
+        inspec_attr_path: /tmp/inspec-attr-{{ inventory_hostname }}-{{ ansible_date_time.iso8601_basic }}.yml
+        inspec_attr_list: "{% for v in inspec_vars_list %}{{v.name}} : {{v.value}}\n{% endfor %}"
+
+    - name: Dump vars to file
+      ansible.builtin.copy:
+        content: '{{ inspec_attr_list }}'
+        dest: '{{ inspec_attr_path }}'
+      changed_when: false
+      delegate_to: localhost
+
+- ansible.builtin.set_fact:
+    inspec_attr_arg: "{{ '--input-file %s'|format(inspec_attr_path) if inspec_vars_list is defined else '' }}"
+
+- name: Set InSpec profiles path
+  ansible.builtin.set_fact:
+    inspec_profile_dir: '{{ current_role_path }}/inspec-profile'
+  when: inspec_profile_dir is undefined
+
+- name: Run InSpec tests
+  ansible.builtin.shell: |
+    eval "$(ssh-agent -s)"
+    ssh-add /home/ansible/.ssh/id_rsa
+    inspec exec {{ inspec_profile_dir }} \
+    -t ssh://{{ ansible_user }}@{{ ansible_host }} \
+    --key-files /home/ansible/.ssh/id_rsa \
+    {{ inspec_attr_arg }}
+  delegate_to: localhost
+  changed_when: false
+  register: inspec_out
+  ignore_errors: yes
+  environment:
+    CHEF_LICENSE: "{{ chef_license }}"
+    CHEF_LICENSE_KEY: "{{ chef_license_key }}"
+
+- name: Display InSpec results
+  ansible.builtin.debug:
+    var: inspec_out.stdout_lines
+  when: inspec_out.rc == 0 or inspec_out.rc == 101
+
+- name: Display InSpec errors
+  ansible.builtin.debug:
+    var: inspec_out.stderr_lines
+  when: inspec_out.rc != 0 and inspec_out.rc != 101
+  failed_when: true
+
