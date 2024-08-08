@@ -85,17 +85,11 @@
     msg: "{{ inspec_out.stderr }}"
   when: inspec_out.rc == 100
 
-- name: Verify if the results file exists on target
-  ansible.builtin.stat:
-    path: /tmp/inspec-results/inspec_results.json
-  register: inspec_results_file
-
 - name: Fetch InSpec results to local machine
   ansible.builtin.fetch:
     src: /tmp/inspec-results/inspec_results.json
     dest: /tmp/inspec_results_{{ inventory_hostname }}.json
     flat: yes
-  when: inspec_results_file.stat.exists
 
 - name: Cleanup temporary InSpec files on target
   ansible.builtin.file:
@@ -111,7 +105,9 @@
   ansible.builtin.slurp:
     src: /tmp/inspec_results_{{ inventory_hostname }}.json
   register: inspec_results_content
-  when: inspec_results_file.stat.exists
 
 - name: Display the InSpec results content
+  ansible.builtin.debug:
+    msg: "{{ inspec_results_content['content'] | b64decode }}"
+  when: inspec_results_content is defined
 
