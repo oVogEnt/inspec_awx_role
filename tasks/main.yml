@@ -59,7 +59,7 @@
     inspec exec {{ inspec_profile_dir }} \
     -t ssh://{{ ansible_user }}@{{ ansible_host }} \
     --key-files /home/ansible/.ssh/id_rsa \
-    {{ inspec_attr_arg }}
+    {{ inspec_attr_arg }} > /tmp/inspec_output.txt 2>&1
   delegate_to: localhost
   changed_when: false
   register: inspec_out
@@ -68,14 +68,30 @@
     CHEF_LICENSE: "{{ chef_license }}"
     CHEF_LICENSE_KEY: "{{ chef_license_key }}"
 
-- name: Display InSpec results
+- name: Read InSpec output
+  ansible.builtin.command:
+    cmd: cat /tmp/inspec_output.txt
+  delegate_to: localhost
+  register: inspec_output_content
+
+- name: Copy InSpec output to target host
+  ansible.builtin.copy:
+    content: "{{ inspec_output_content.stdout }}"
+    dest: /tmp/inspec_output_{{ inventory_hostname }}.txt
+
+- name: Display InSpec output summary
   ansible.builtin.debug:
-    var: inspec_out.stdout_lines
+    msg: "InSpec run completed. Results stored in /tmp/inspec_output_{{ inventory_hostname }}.txt"
   when: inspec_out.rc == 0 or inspec_out.rc == 101
 
-- name: Display InSpec errors
+- name: Cleanup temporary InSpec files on local
+  ansible.builtin.file:
+    path: /tmp/inspec_output.txt
+    state: absent
+  delegate_to: localhost
+
+- name: Display InSpec results content
   ansible.builtin.debug:
-    var: inspec_out.stderr_lines
-  when: inspec_out.rc != 0 and inspec_out.rc != 101
-  failed_when: true
+    msg: "{{ inspec_output_content.stdout }}"
+  when: inspec_output_content is defined
 
