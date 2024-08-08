@@ -52,6 +52,12 @@
     inspec_profile_dir: '{{ current_role_path }}/inspec-profile'
   when: inspec_profile_dir is undefined
 
+- name: Ensure InSpec results directory exists on target
+  ansible.builtin.file:
+    path: /tmp/inspec-results
+    state: directory
+    mode: '0755'
+
 - name: Run InSpec tests
   ansible.builtin.shell: |
     eval "$(ssh-agent -s)"
@@ -59,7 +65,8 @@
     inspec exec {{ inspec_profile_dir }} \
     -t ssh://{{ ansible_user }}@{{ ansible_host }} \
     --key-files /home/ansible/.ssh/id_rsa \
-    {{ inspec_attr_arg }}
+    {{ inspec_attr_arg }} \
+    --reporter json:/tmp/inspec-results/inspec_results.json
   delegate_to: localhost
   changed_when: false
   register: inspec_out
@@ -68,14 +75,29 @@
     CHEF_LICENSE: "{{ chef_license }}"
     CHEF_LICENSE_KEY: "{{ chef_license_key }}"
 
-- name: Display InSpec results
+- name: Fetch InSpec results to local machine
+  ansible.builtin.fetch:
+    src: /tmp/inspec-results/inspec_results.json
+    dest: /tmp/inspec_results_{{ inventory_hostname }}.json
+    flat: yes
+
+- name: Cleanup temporary InSpec files on target
+  ansible.builtin.file:
+    path: /tmp/inspec-results/inspec_results.json
+    state: absent
+
+- name: Display InSpec summary
   ansible.builtin.debug:
-    var: inspec_out.stdout_lines
+    msg: "InSpec run completed. Results stored in /tmp/inspec_results_{{ inventory_hostname }}.json"
   when: inspec_out.rc == 0 or inspec_out.rc == 101
 
-- name: Display InSpec errors
+- name: Read the InSpec results
+  ansible.builtin.slurp:
+    src: /tmp/inspec_results_{{ inventory_hostname }}.json
+  register: inspec_results_content
+
+- name: Display the InSpec results content
   ansible.builtin.debug:
-    var: inspec_out.stderr_lines
-  when: inspec_out.rc != 0 and inspec_out.rc != 101
-  failed_when: true
+    msg: "{{ inspec_results_content['content'] | b64decode }}"
+  when: inspec_results_content is defined
 
